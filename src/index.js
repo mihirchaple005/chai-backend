@@ -1,11 +1,23 @@
 import dotenv from 'dotenv'
 import connetDB from './db/index.js';
+import { app } from './app.js';
 
 dotenv.config({
     path : './env'
 })
 
 connetDB()
+.then(() => { 
+    app.listen(process.env.PORT,() => {
+        console.log(`App listening on the PORT : ${process.env.PORT}`)
+    })
+    app.on("errror",(err) => {
+        console.log("Error after connection : ",err);
+    })
+})
+.catch((err) => {
+    console.log("Error while connecting to DB : ERR -> ",err)
+})
 
 
 

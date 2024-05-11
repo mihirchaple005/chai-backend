@@ -8,9 +8,9 @@ const connetDB = async () => {
     try {
         const connectionInstance = await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`)
         app.on("error",(error) => {
-            console.log("Error After connecting : ERR -> ",error);
+            console.log("Error After connecting : ERR -> ", error);
         })
-        console.log(`MongoDB connect !! DB Host : ,${connectionInstance.connection.host}`)
+        console.log(`MongoDB connect !! DB Host : ${connectionInstance.connection.host}`)
         // app.listen(process.env.PORT, () => {
         //     console.log("App Listning At PORT : ",process.env.PORT)
         // })

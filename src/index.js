@@ -11,7 +11,7 @@ connetDB()
     app.listen(process.env.PORT,() => {
         console.log(`App listening on the PORT : ${process.env.PORT}`)
     })
-    app.on("errror",(err) => {
+    app.on("error",(err) => {  // errror -> error me change kiya hai
         console.log("Error after connection : ",err);
     })
 })

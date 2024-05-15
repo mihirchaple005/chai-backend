@@ -45,7 +45,7 @@ const userSchema = new Schema(
         }
     },
     {
-        timeStamps : true
+        timeStamps : true,
     }
 )
 
@@ -79,7 +79,7 @@ userSchema.methods.generateAccessToken = function(){
 
 
 // referesh token me jyada information nahi hoti hai our yee bar bar generate bhi hota hai 
-userSchema.methods.generareRefresh.Token = function(){
+userSchema.methods.generareRefreshToken = function(){
     return jwt.sign(
         {
             _id : this._id,

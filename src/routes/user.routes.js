@@ -8,7 +8,7 @@ import {upload} from "../middlewares/multer.middleware.js"
 const router = Router()
 
 router.route("/register").post(
-    // opload to cloudinary
+    // upload to cloudinary
     upload.fields([
         {
             name : "avatar",

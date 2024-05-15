@@ -1,8 +1,8 @@
 // yaha haam file upload hamare production team ke local server pa aane ke baaad ka code likhne wale hai
 
-import {v2 as cloudinary} from cloudinary;
+import { v2 as cloudinary} from "cloudinary";
 
-import fs from fs;
+import fs from "fs";
 
 cloudinary.config({ 
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
@@ -15,11 +15,13 @@ const uploadOnCloudinary = async (localFilePath) => {
     try {
         if (!localFilePath) return null;
         // upload the file on cloudinary
+        console.log(localFilePath);
         const response =  await cloudinary.uploader.upload(localFilePath, {
             resource_type : "auto"
         })
         //file has been uploaded successfully
-        console.log("file is uploaded on cloudinary", response.url)
+        // console.log("file is uploaded on cloudinary", response.url)
+        fs.unlinkSync(localFilePath)
         return response;
     } catch (error) {
         fs.unlinkSync(localFilePath)  // remocve the temporarcy saved file if upload operation fails

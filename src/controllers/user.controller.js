@@ -4,6 +4,7 @@ import {User} from "../models/user.model.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 
 
@@ -257,10 +258,135 @@ const refreshAccessToken = asyncHandler( async (req, res) => {
 
 })
 
+const changeCurrentPassword = asyncHandler( async(req, res) => {
+    const {oldPassword, newPassword} = req.body
+
+    const user = await User.findById(req.user?._id)  //yee id
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+    if (!isPasswordCorrect) {
+        throw new ApiError(400 , "Invalid old password")
+    }
+
+    this.password = newPassword  // this is to set the password here it not saved yet in the database
+    await user.save({validateBeforeSave : false}) // here the hashed password is saved in the database and haa jaab save method call hoga tabhi vho pre dave wala hook run hoga jho user model me likha hai
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully"))
+})
+
+const getCurrentUser = asyncHandler(async(req, res) => {
+    return res
+    .status(200)
+    .json(200, req.user, "current user fetched successfully")
+    // user = await User.findById(req.user?._id)
+    
+})
+
+
+// production level code trick : koi file vagera update krwani hai user se tho uska controller alag se likhna most of the production level code me log aisa hi krte hai
+
+const updateAccountDetails = asyncHandler(async(req, res) => {
+    const {fullName, email} = req.body
+
+    if (!fullName || !email) {
+        throw new ApiError(400, "All fields are required")
+    }
+
+    const user = User.findByIdAndUpdate(
+        req.user?._id, //yee id
+        {
+            $set : {
+                fullName,  // fullName : fullName aisa bhi kiya tho chalenga
+                email
+            }
+        },
+        {
+            new : true,
+        }
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account details updated successfully")) //yee data api ke through jata hai frontend ke pass
+
+})
+
+
+
+// writing seperste controllers for updation in file kind of things
+const updateUserAvatar = asyncHandler(async(req, res) => {
+    const avatarLocalPath = req.file?.path
+
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is missing")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if (!avatar.url)  {
+        throw new ApiError(400, "Error while uploading on avatar")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req?.user._id,
+        {
+            $set : {
+                avatar : avatar.url
+            }
+        },
+        { new : true }
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "Avatar image updated successfully")
+    )
+
+})
+
+const updateUserCoverImage = asyncHandler(async(req, res) => {
+    const coverImageLocalPath = req.file?.path
+
+    if (!coverImageLocalPath) {
+        throw new ApiError(400, "Cover image file is missing")
+    }
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    if (!coverImage.url)  {
+        throw new ApiError(400, "Error while uploading on cover image")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req?.user._id,
+        {
+            $set : {
+                coverImage : coverImage.url
+            }
+        },
+        { new : true }
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "Cover image updated successfully")
+    )
+
+})
+
 export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage
 }
 

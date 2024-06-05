@@ -5,6 +5,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import mongoose from "mongoose";
 
 
 
@@ -294,12 +295,12 @@ const updateAccountDetails = asyncHandler(async(req, res) => {
         throw new ApiError(400, "All fields are required")
     }
 
-    const user = User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
         req.user?._id, //yee id
         {
             $set : {
                 fullName,  // fullName : fullName aisa bhi kiya tho chalenga
-                email
+                email : email
             }
         },
         {
@@ -378,6 +379,143 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
 
 })
 
+const getUserChannelProfile = asyncHandler(async(req, res) => {
+    const {userName} = req.params
+    if (!userName?.trim()) {
+        throw new ApiError('400',"User Name is missing")
+    }
+
+    // writing mogodb aggregation pipelines
+
+    const channel = await User.aggregate([
+        {
+            $match : userName?.toLowerCase()
+        },
+        {
+            $lookup : {
+                from : subscriptions, // hamne code me naam Subscription diya hai but mogodb me as subscriptions reflect hoga
+                localField : "_id",
+                foreignField : "channel",
+                as : "suscribers"  // iaa naam se dikenga yee jaab attach ho jayega basicaaly varible name dere data ko jo haam aggregated pipeline se laa rahe hai
+            }
+        },
+         {
+            $lookup : {
+                from : subscriptions,
+                localField : "_id",
+                foreignField : "subscriber",
+                as : "suscribedTo"
+            }  
+         },
+         {
+            $addFields : {
+                subscribersCount : {
+                    $size : "$suscribers"
+                },
+                channelSubscribedToCount : {
+                    $size : "$suscribedTo"
+                },
+                isSubscribed : {
+                    $cond : {
+                        if : {$in : [req.user?._id, "subscribers.subscriber"]},
+                        then : true,
+                        else : false
+                    }
+                 }
+            }
+         },
+         {
+            $project : {
+                fullName : 1,
+                userName : 1,
+                subscribersCount : 1,
+                channelSubscribedToCount : 1,
+                isSubscribed : 1,
+                coverImage : 1,
+                avatar : 1,
+                email : 1
+            }
+         }
+         
+    ])
+
+    //  aase time prr jaab pata na ho ki value konsi aa rahi hai console log krr dena jaise iss case ne channel hai upper wala
+    // console.log(channel)
+
+    if (!channel?.length) {
+        throw new ApiError(404, "channel does not exists")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, "User channel fetched successfully")
+    )
+})
+
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+    // req.user._id yee string deta hai object id ke andar ki and yee sabb convertion ka kam krta hai mongoose
+    // prr agrregation me data directly hi pass hota hai iseleye hame object id thorough mongoose banani padengi
+
+    const user = await User.aggregate([
+        {
+            $match : {
+                // _id : req.user._id yee  nahi krr sakte due to above resons
+                _id : new mongoose.Types.ObjectId(req.user._id)
+
+            }
+        },
+        {
+            $lookup : {
+                from : "videos",
+                localField : "watchHistory",
+                foreignField : "_id",
+                as : "watchHistory",
+                pipeline : [
+                    {
+                        $lookup : {
+                            from : "users",
+                            localField : "owner",
+                            foreignField : "_id",
+                            as : "owner",
+                            pipeline : [
+                                {
+                                    $project : {
+                                        fullName : 1,
+                                        avatar : 1,
+                                        userName : 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields : {
+                            owner : {
+                                $first : "$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user[0].getWatchHistory,
+            "watch History fetched successfully "
+        )
+    )
+
+})
+
+
+
 export {
     registerUser,
     loginUser,
@@ -387,6 +525,7 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile
 }
 

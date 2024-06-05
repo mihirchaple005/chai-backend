@@ -4,3 +4,9 @@
 ./vscode
 /node_modules
 ./dist
+
+# The "dist" directory serves as a designated location to store the optimized and production-ready files generated during the build process. These files might include:
+# Compiled JavaScript code (from TypeScript, ES6+, or other languages)
+# Minified CSS stylesheets
+# Optimized images
+# Other assets (fonts, icons, etc.)

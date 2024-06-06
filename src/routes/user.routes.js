@@ -7,7 +7,7 @@ import {
     changeCurrentPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, getUserChannelProfile, getWatchHistory 
 } from "../controllers/user.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { upload } from "../middlewares/multer.middleware.js";
+
 
 // middleware import 
 
@@ -43,12 +43,25 @@ router.route("/update-account").patch(verifyJWT, updateAccountDetails)
 
 router.route("/avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar)
 
-router.route("/cover-image").patch(verifyJWT, upload.single("/coverImage"), updateUserCoverImage)
+router.route("/cover-image").patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage)
 
 
 // specialy of users
 router.route("/c/:userName").get(verifyJWT, getUserChannelProfile)
 
 router.route("/history").get(verifyJWT, getWatchHistory)
+
+router.route("/new-video-upload").post(
+    upload.fields([
+        {
+            name : "videoFile",
+            maxCount : 1,
+        },
+        {
+            name : "thumbnail",
+            maxCount : 1,
+        }
+    ])
+)
 
 export default router

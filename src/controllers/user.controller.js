@@ -6,6 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import mongoose from "mongoose";
+import { Video } from "../models/video.model.js";
 
 
 
@@ -187,8 +188,8 @@ const logoutUser = asyncHandler(async(req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set : {
-                refreshToken : undefined
+            $unset : {
+                refreshToken : 1
             }
         },
         {
@@ -314,8 +315,6 @@ const updateAccountDetails = asyncHandler(async(req, res) => {
 
 })
 
-
-
 // writing seperste controllers for updation in file kind of things
 const updateUserAvatar = asyncHandler(async(req, res) => {
     const avatarLocalPath = req.file?.path
@@ -389,19 +388,21 @@ const getUserChannelProfile = asyncHandler(async(req, res) => {
 
     const channel = await User.aggregate([
         {
-            $match : userName?.toLowerCase()
+            $match : { 
+                userName : userName?.toLowerCase() 
+            }
         },
         {
             $lookup : {
-                from : subscriptions, // hamne code me naam Subscription diya hai but mogodb me as subscriptions reflect hoga
+                from : "subscriptions", // hamne code me naam Subscription diya hai but mogodb me as subscriptions reflect hoga
                 localField : "_id",
                 foreignField : "channel",
-                as : "suscribers"  // iaa naam se dikenga yee jaab attach ho jayega basicaaly varible name dere data ko jo haam aggregated pipeline se laa rahe hai
+                as : "subscribers"  // iaa naam se dikenga yee jaab attach ho jayega basicaaly varible name dere data ko jo haam aggregated pipeline se laa rahe hai
             }
         },
          {
             $lookup : {
-                from : subscriptions,
+                from : "subscriptions",
                 localField : "_id",
                 foreignField : "subscriber",
                 as : "suscribedTo"
@@ -410,14 +411,14 @@ const getUserChannelProfile = asyncHandler(async(req, res) => {
          {
             $addFields : {
                 subscribersCount : {
-                    $size : "$suscribers"
+                    $size : "$subscribers"
                 },
                 channelSubscribedToCount : {
                     $size : "$suscribedTo"
                 },
                 isSubscribed : {
                     $cond : {
-                        if : {$in : [req.user?._id, "subscribers.subscriber"]},
+                        if : {$in : [req.user?._id, "$subscribers.subscriber"]},
                         then : true,
                         else : false
                     }
@@ -516,6 +517,68 @@ const getWatchHistory = asyncHandler(async (req, res) => {
 
 
 
+// yee khud se banaya wala hai isko nahi chedna problem ho sakti hai
+
+const uploadVideo = asyncHandler( async (req, res) => {
+
+    const {title, description} = req.body
+
+    if ([title, description].some((fields) => fields?.trim == "")) {
+        throw new ApiError(200, "title and description are mandatory")
+    }
+
+    const videoLocalPath = req.files?.videoFile[0]?.path
+
+    if (!videoLocalPath) {
+        return new ApiError(400, "Video file not uploaded properly . Video file is needed")
+    }
+
+    const videoUpload = await uploadOnCloudinary(videoLocalPath)
+
+    if ( !videoUpload ) {
+        throw new ApiError(500, "something went wrong while uploading ")
+    }
+
+    const thumbnailLocalPath = req.files?.thumbnail?.path
+
+    if ( !thumbnailLocalPath ) {
+        return new ApiError(200, "Thumbnail is required")
+    }
+
+    const thumbnailUpload = await uploadOnCloudinary(thumbnailLocalPath)
+
+    if ( !thumbnailUpload ) {
+        return new ApiError(200, "Thumbnail is required")
+    }
+
+    const userId = req.user._id
+
+    const uploadedVideo = await Video.create({
+        videoFile : videoUpload.url,
+        thumbnail : thumbnailUpload.url,
+        title,
+        description,
+        owner : userId
+    })
+
+    if ( !uploadedVideo ) {
+        throw new ApiError(501, "something went wrong while uploding video in database")
+    }
+
+    // views ka code likna baki hai kaise hoge uspe vichar vimash krna padenga
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, uploadedVideo, "Video uploaded successfully")
+    )
+
+
+
+})
+
+
+
 export {
     registerUser,
     loginUser,
@@ -527,6 +590,7 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
-    getWatchHistory
+    getWatchHistory,
+    uploadVideo
 }
 
